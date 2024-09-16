@@ -5,96 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pomodoro Timer</title>
     <style>
-        /* General reset and styling */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
-        }
-
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: transparent;
-        }
-
-        /* Timer Circle */
-        .timer-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            background-color: #f4f4f4;
-            padding: 20px;
-            border-radius: 20px;
-            filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06));
-        }
-
-        .circle {
-            width: 180px;
-            height: 180px;
-            border-radius: 50%;
-            border: 8px solid #dfbebe;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 15px;
-            position: relative;
-            /* Pulse animation applied dynamically */
-        }
-
-        .circle.pulse {
-            animation: pulse 1s 1;
-        }
-
-        /* Pulse animation */
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.05);
-            }
-            100% {
-                transform: scale(1);
-            }
-        }
-
-        /* Timer display */
-        #timer {
-            font-size: 40px;
-            color: #2c3e50;
-        }
-
-        /* Button Styles */
-        .buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .buttons button {
-            background-color: #979797;
-            color: white;
-            border: none;
-            padding: 7px 20px;
-            font-size: 14px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-        }
-
-        .buttons button:hover {
-            background-color: #2980b9;
-            transform: scale(1.05);
-        }
-
-        .buttons button:active {
-            transform: scale(1);
-        }
+        /* Your existing CSS here */
     </style>
 </head>
 <body>
@@ -115,138 +26,71 @@
 <audio id="timerSound" src="https://github.com/TheMole3/pomdoro/raw/main/timerdone.mp3" preload="auto"></audio>
 
 <script>
-    const defaultTimes = {
-        pomodoro: 25 * 60,
-        shortBreak: 5 * 60,
-        longBreak: 10 * 60
-    };
-
     const timerElement = document.getElementById('timer');
     const timerCircle = document.getElementById('timerCircle');
     const sound = document.getElementById('timerSound');
+    let worker;
 
-    let timer;
-    let timeLeft = defaultTimes.pomodoro;
-    let countdownActive = false;
+    if (window.Worker) {
+        worker = new Worker('worker.js');
 
-    // Helper function to format time as MM:SS
+        worker.onmessage = function(event) {
+            switch (event.data.type) {
+                case 'TICK':
+                    timerElement.textContent = formatTime(event.data.timeLeft);
+                    break;
+                case 'END':
+                    timerCircle.classList.remove('pulse');
+                    sound.play();
+                    if (Notification.permission === 'granted') {
+                        new Notification('Time is up!');
+                    }
+                    break;
+                case 'RESET':
+                    timerElement.textContent = formatTime(event.data.timeLeft);
+                    break;
+            }
+        };
+    }
+
     function formatTime(seconds) {
         let minutes = Math.floor(seconds / 60);
         let secondsLeft = seconds % 60;
         return `${String(minutes).padStart(2, '0')}:${String(secondsLeft).padStart(2, '0')}`;
     }
 
-    // Update timer display
-    function updateTimerDisplay() {
-        timerElement.textContent = formatTime(timeLeft);
-    }
-
-    // Save timer state to localStorage
-    function saveTimerState() {
-        localStorage.setItem('timerState', JSON.stringify({
-            timeLeft: timeLeft,
-            countdownActive: countdownActive
-        }));
-    }
-
-    // Load timer state from localStorage
-    function loadTimerState() {
-        const savedState = localStorage.getItem('timerState');
-        if (savedState) {
-            const { timeLeft: savedTimeLeft, countdownActive: savedCountdownActive } = JSON.parse(savedState);
-            if (savedCountdownActive) {
-                timeLeft = savedTimeLeft;
-                countdownActive = true;
-                startCountdown(timeLeft, true);
-            } else {
-                timeLeft = savedTimeLeft;
-                countdownActive = false;
-                updateTimerDisplay();
-            }
-        } else {
-            timeLeft = defaultTimes.pomodoro;
-            countdownActive = false;
-            updateTimerDisplay();
+    function startCountdown(duration) {
+        if (worker) {
+            timerCircle.classList.add('pulse');
+            worker.postMessage({ type: 'START', duration: duration });
         }
     }
 
-    // Show notification
-    function showNotification(message) {
-        if (Notification.permission === 'granted') {
-            new Notification(message);
-        }
-    }
-
-    // Start countdown
-    function startCountdown(duration, resume = false) {
-        clearInterval(timer);
-        timeLeft = duration;
-        updateTimerDisplay();
-        countdownActive = true;
-
-        // Add pulse animation only when timer is active
-        timerCircle.classList.add('pulse');
-
-        if (!resume) {
-            saveTimerState();
-        }
-
-        timer = setInterval(function() {
-            if (timeLeft > 0) {
-                timeLeft--;
-                updateTimerDisplay();
-                saveTimerState();
-            } else {
-                clearInterval(timer);
-                countdownActive = false;
-
-                // Stop pulse animation when the timer ends
-                timerCircle.classList.remove('pulse');
-
-                // Play sound and show notification
-                sound.play();
-                showNotification('Time is up!');
-                localStorage.removeItem('timerState'); // Clear saved state
-            }
-        }, 1000);
-    }
-
-    // Event listeners for buttons
     document.getElementById('pomodoro').addEventListener('click', function() {
-        startCountdown(defaultTimes.pomodoro);
+        startCountdown(25 * 60); // Default Pomodoro time
     });
 
     document.getElementById('shortBreak').addEventListener('click', function() {
-        startCountdown(defaultTimes.shortBreak);
+        startCountdown(5 * 60); // Short break time
     });
 
     document.getElementById('longBreak').addEventListener('click', function() {
-        startCountdown(defaultTimes.longBreak);
+        startCountdown(10 * 60); // Long break time
     });
 
     document.getElementById('reset').addEventListener('click', function() {
-        clearInterval(timer);
-        countdownActive = false;
-        timeLeft = defaultTimes.pomodoro;
-        updateTimerDisplay();
-
-        // Stop pulse animation when reset
-        timerCircle.classList.remove('pulse');
-        localStorage.removeItem('timerState'); // Clear saved state
-    });
-
-    // Load timer state when the page loads
-    loadTimerState();
-
-    // Listen for changes in localStorage to synchronize between multiple tabs
-    window.addEventListener('storage', function(event) {
-        if (event.key === 'timerState') {
-            loadTimerState();
+        if (worker) {
+            worker.postMessage({ type: 'RESET' });
+            timerCircle.classList.remove('pulse');
         }
     });
 
+    if (Notification.permission !== 'granted') {
+        Notification.requestPermission();
+    }
+
     // Set initial display
-    updateTimerDisplay();
+    timerElement.textContent = formatTime(25 * 60);
 </script>
 
 </body>
