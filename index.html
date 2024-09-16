@@ -111,6 +111,9 @@
     </div>
 </div>
 
+<!-- Sound notification -->
+<audio id="timerSound" src="https://github.com/TheMole3/pomdoro/raw/main/timerdone.mp3" preload="auto"></audio>
+
 <script>
     // Default time values for Pomodoro, Short Break, and Long Break
     let defaultTimes = {
@@ -124,6 +127,7 @@
     let timer;
     let timeLeft = defaultTimes.pomodoro;
     let countdownActive = false;
+    let sound = document.getElementById('timerSound');
 
     // Helper function to format time as MM:SS
     function formatTime(seconds) {
@@ -135,6 +139,18 @@
     // Update timer display
     function updateTimerDisplay() {
         timerElement.textContent = formatTime(timeLeft);
+    }
+
+    // Request notification permission
+    if (Notification.permission !== 'granted') {
+        Notification.requestPermission();
+    }
+
+    // Show notification
+    function showNotification(message) {
+        if (Notification.permission === 'granted') {
+            new Notification(message);
+        }
     }
 
     // Start countdown
@@ -157,6 +173,10 @@
 
                 // Stop pulse animation when the timer ends
                 timerCircle.classList.remove('pulse');
+
+                // Play sound and show notification
+                sound.play();
+                showNotification('Time is up!');
             }
         }, 1000);
     }
