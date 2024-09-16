@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Timer</title>
+    <style>
+        /* General reset and styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+
+        /* Timer Circle */
+        .timer-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .circle {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 8px solid #dfbebe;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+            position: relative;
+            /* Pulse animation applied dynamically */
+        }
+
+        .circle.pulse {
+            animation: pulse 1s infinite;
+        }
+
+        /* Pulse animation */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* Timer display */
+        #timer {
+            font-size: 40px;
+            color: #2c3e50;
+        }
+
+        /* Button Styles */
+        .buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .buttons button {
+            background-color: #979797;
+            color: white;
+            border: none;
+            padding: 7px 10px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .buttons button:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
+
+        .buttons button:active {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body>
+
+<div class="timer-container">
+    <div class="circle" id="timerCircle">
+        <div id="timer">25:00</div>
+    </div>
+    <div class="buttons">
+        <button id="pomodoro">Pomo</button>
+        <button id="shortBreak">Short</button>
+        <button id="longBreak">Long</button>
+        <button id="reset">Reset</button>
+    </div>
+</div>
+
+<script>
+    // Default time values for Pomodoro, Short Break, and Long Break
+    let defaultTimes = {
+        pomodoro: 25 * 60,
+        shortBreak: 5 * 60,
+        longBreak: 10 * 60
+    };
+
+    let timerElement = document.getElementById('timer');
+    let timerCircle = document.getElementById('timerCircle');
+    let timer;
+    let timeLeft = defaultTimes.pomodoro;
+    let countdownActive = false;
+
+    // Helper function to format time as MM:SS
+    function formatTime(seconds) {
+        let minutes = Math.floor(seconds / 60);
+        let secondsLeft = seconds % 60;
+        return `${String(minutes).padStart(2, '0')}:${String(secondsLeft).padStart(2, '0')}`;
+    }
+
+    // Update timer display
+    function updateTimerDisplay() {
+        timerElement.textContent = formatTime(timeLeft);
+    }
+
+    // Start countdown
+    function startCountdown(duration) {
+        clearInterval(timer); // Clear any previous interval
+        timeLeft = duration;
+        updateTimerDisplay();
+        countdownActive = true;
+
+        // Add pulse animation only when timer is active
+        timerCircle.classList.add('pulse');
+
+        timer = setInterval(function() {
+            if (timeLeft > 0) {
+                timeLeft--;
+                updateTimerDisplay();
+            } else {
+                clearInterval(timer);
+                countdownActive = false;
+
+                // Stop pulse animation when the timer ends
+                timerCircle.classList.remove('pulse');
+            }
+        }, 1000);
+    }
+
+    // Event listeners for buttons
+    document.getElementById('pomodoro').addEventListener('click', function() {
+        startCountdown(defaultTimes.pomodoro);
+    });
+
+    document.getElementById('shortBreak').addEventListener('click', function() {
+        startCountdown(defaultTimes.shortBreak);
+    });
+
+    document.getElementById('longBreak').addEventListener('click', function() {
+        startCountdown(defaultTimes.longBreak);
+    });
+
+    document.getElementById('reset').addEventListener('click', function() {
+        clearInterval(timer);
+        countdownActive = false;
+        timeLeft = defaultTimes.pomodoro;
+        updateTimerDisplay();
+
+        // Stop pulse animation when reset
+        timerCircle.classList.remove('pulse');
+    });
+
+    // Set initial display
+    updateTimerDisplay();
+</script>
+
+</body>
+</html>
