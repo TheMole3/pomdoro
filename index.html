@@ -115,19 +115,19 @@
 <audio id="timerSound" src="https://github.com/TheMole3/pomdoro/raw/main/timerdone.mp3" preload="auto"></audio>
 
 <script>
-    // Default time values for Pomodoro, Short Break, and Long Break
-    let defaultTimes = {
+    const defaultTimes = {
         pomodoro: 25 * 60,
         shortBreak: 5 * 60,
         longBreak: 10 * 60
     };
 
-    let timerElement = document.getElementById('timer');
-    let timerCircle = document.getElementById('timerCircle');
+    const timerElement = document.getElementById('timer');
+    const timerCircle = document.getElementById('timerCircle');
+    const sound = document.getElementById('timerSound');
+
     let timer;
     let timeLeft = defaultTimes.pomodoro;
     let countdownActive = false;
-    let sound = document.getElementById('timerSound');
 
     // Helper function to format time as MM:SS
     function formatTime(seconds) {
@@ -141,9 +141,33 @@
         timerElement.textContent = formatTime(timeLeft);
     }
 
-    // Request notification permission
-    if (Notification.permission !== 'granted') {
-        Notification.requestPermission();
+    // Save timer state to localStorage
+    function saveTimerState() {
+        localStorage.setItem('timerState', JSON.stringify({
+            timeLeft: timeLeft,
+            countdownActive: countdownActive
+        }));
+    }
+
+    // Load timer state from localStorage
+    function loadTimerState() {
+        const savedState = localStorage.getItem('timerState');
+        if (savedState) {
+            const { timeLeft: savedTimeLeft, countdownActive: savedCountdownActive } = JSON.parse(savedState);
+            if (savedCountdownActive) {
+                timeLeft = savedTimeLeft;
+                countdownActive = true;
+                startCountdown(timeLeft, true);
+            } else {
+                timeLeft = savedTimeLeft;
+                countdownActive = false;
+                updateTimerDisplay();
+            }
+        } else {
+            timeLeft = defaultTimes.pomodoro;
+            countdownActive = false;
+            updateTimerDisplay();
+        }
     }
 
     // Show notification
@@ -154,8 +178,8 @@
     }
 
     // Start countdown
-    function startCountdown(duration) {
-        clearInterval(timer); // Clear any previous interval
+    function startCountdown(duration, resume = false) {
+        clearInterval(timer);
         timeLeft = duration;
         updateTimerDisplay();
         countdownActive = true;
@@ -163,10 +187,15 @@
         // Add pulse animation only when timer is active
         timerCircle.classList.add('pulse');
 
+        if (!resume) {
+            saveTimerState();
+        }
+
         timer = setInterval(function() {
             if (timeLeft > 0) {
                 timeLeft--;
                 updateTimerDisplay();
+                saveTimerState();
             } else {
                 clearInterval(timer);
                 countdownActive = false;
@@ -177,6 +206,7 @@
                 // Play sound and show notification
                 sound.play();
                 showNotification('Time is up!');
+                localStorage.removeItem('timerState'); // Clear saved state
             }
         }, 1000);
     }
@@ -202,6 +232,17 @@
 
         // Stop pulse animation when reset
         timerCircle.classList.remove('pulse');
+        localStorage.removeItem('timerState'); // Clear saved state
+    });
+
+    // Load timer state when the page loads
+    loadTimerState();
+
+    // Listen for changes in localStorage to synchronize between multiple tabs
+    window.addEventListener('storage', function(event) {
+        if (event.key === 'timerState') {
+            loadTimerState();
+        }
     });
 
     // Set initial display
